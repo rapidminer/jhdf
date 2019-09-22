@@ -21,6 +21,7 @@ import io.jhdf.HdfFileChannel;
 import io.jhdf.Superblock;
 import io.jhdf.Utils;
 import io.jhdf.dataset.chunked.Chunk;
+import io.jhdf.dataset.chunked.indexing.ChunkImpl;
 import io.jhdf.exceptions.HdfException;
 
 /**
@@ -38,47 +39,6 @@ public abstract class BTreeV1Data extends BTreeV1 {
 	 * @return the raw data chunks address from this b-tree
 	 */
 	public abstract List<Chunk> getChunks();
-
-	public class BTreeV1Chunk implements Chunk {
-		private final int size;
-		private final BitSet filterMask;
-		private final int[] chunkOffset;
-		private final long address;
-
-		private BTreeV1Chunk(int size, BitSet filterMask, int[] chunkOffset, long address) {
-			super();
-			this.size = size;
-			this.filterMask = filterMask;
-			this.chunkOffset = chunkOffset;
-			this.address = address;
-		}
-
-		@Override
-		public int getSize() {
-			return size;
-		}
-
-		@Override
-		public BitSet getFilterMask() {
-			return filterMask;
-		}
-
-		@Override
-		public int[] getChunkOffset() {
-			return chunkOffset;
-		}
-
-		@Override
-		public long getAddress() {
-			return address;
-		}
-
-		@Override
-		public String toString() {
-			return "Chunk [chunkOffset=" + Arrays.toString(chunkOffset) + ", size=" + size + ", address=" + address
-					+ "]";
-		}
-	}
 
 	/* package */ static class BTreeV1DataLeafNode extends BTreeV1Data {
 
@@ -105,9 +65,9 @@ public abstract class BTreeV1Data extends BTreeV1 {
 		}
 
 		private Chunk readKeyAsChunk(Superblock sb, int dataDimensions, ByteBuffer bb) {
-			int chunkSize = Utils.readBytesAsUnsignedInt(bb, 4);
-			BitSet filterMask = BitSet.valueOf(new byte[] { bb.get(), bb.get(), bb.get(), bb.get() });
-			int[] chunkOffset = new int[dataDimensions];
+			final int chunkSize = Utils.readBytesAsUnsignedInt(bb, 4);
+			final BitSet filterMask = BitSet.valueOf(new byte[] { bb.get(), bb.get(), bb.get(), bb.get() });
+			final int[] chunkOffset = new int[dataDimensions];
 			for (int j = 0; j < dataDimensions; j++) {
 				chunkOffset[j] = Utils.readBytesAsUnsignedInt(bb, 8);
 			}
@@ -116,8 +76,8 @@ public abstract class BTreeV1Data extends BTreeV1 {
 				throw new HdfException("Invalid B tree chunk detected");
 			}
 
-			long chunkAddress = Utils.readBytesAsUnsignedLong(bb, sb.getSizeOfOffsets());
-			return new BTreeV1Chunk(chunkSize, filterMask, chunkOffset, chunkAddress);
+			final long chunkAddress = Utils.readBytesAsUnsignedLong(bb, sb.getSizeOfOffsets());
+			return new ChunkImpl(chunkAddress, chunkSize, chunkOffset, filterMask);
 		}
 
 		@Override
